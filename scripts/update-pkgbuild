@@ -19,6 +19,7 @@ if [[ -z "$release_tag" || "$release_tag" == 'null' || "${release_tag,,}" == *ni
 fi
 
 readonly version="${release_tag#v}"
+current_version="$(sed -n 's/^pkgver=//p' "$pkgbuild")"
 checksums_file="$(mktemp)"
 trap 'rm -f "$checksums_file"' EXIT
 rm -f "$checksums_file"
@@ -36,12 +37,17 @@ if [[ ! "$amd64_sum" =~ ^[0-9a-f]{64}$ || ! "$arm64_sum" =~ ^[0-9a-f]{64}$ ]]; t
   exit 1
 fi
 
-sed -i \
-  -e "s/^pkgver=.*/pkgver=$version/" \
-  -e 's/^pkgrel=.*/pkgrel=1/' \
-  -e "s/^sha256sums_x86_64=.*/sha256sums_x86_64=('$amd64_sum')/" \
-  -e "s/^sha256sums_aarch64=.*/sha256sums_aarch64=('$arm64_sum')/" \
-  "$pkgbuild"
+sed_args=(
+  -e "s/^pkgver=.*/pkgver=$version/"
+  -e "s/^sha256sums_x86_64=.*/sha256sums_x86_64=('$amd64_sum')/"
+  -e "s/^sha256sums_aarch64=.*/sha256sums_aarch64=('$arm64_sum')/"
+)
+
+if [[ "$version" != "$current_version" ]]; then
+  sed_args+=(-e 's/^pkgrel=.*/pkgrel=1/')
+fi
+
+sed -i "${sed_args[@]}" "$pkgbuild"
 
 bash -n "$pkgbuild"
 printf 'Updated %s to %s\n' "$pkgbuild" "$version"
