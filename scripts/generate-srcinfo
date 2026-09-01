@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+readonly image='archlinux:base-devel'
+
+docker run --rm \
+  --volume "$PWD:/workspace" \
+  --workdir /workspace \
+  "$image" \
+  bash -c '
+    useradd --create-home builder
+    runuser --user builder -- makepkg --printsrcinfo
+  ' > .SRCINFO
